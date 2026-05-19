@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: organica-bot
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: LLM_PROVIDER
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        sync: false
+      - key: LLM_CHAT_MODEL
+        sync: false
+      - key: LLM_EMBED_MODEL
+        sync: false
+      - key: LLM_EMBED_DIM
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_DB_PASSWORD
+        sync: false
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ALLOW_ORIGINS
+        sync: false

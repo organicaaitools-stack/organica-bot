@@ -1,0 +1,9 @@
+# Secrets - NEVER commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Not needed at runtime (app reads KB from Supabase)
+kb_index.json
