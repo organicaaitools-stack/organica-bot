@@ -1,21 +1,21 @@
-/* Organica Biotech - chat widget (self-contained, brand-aligned).
+/* Organica Biotech - chat widget with guided flow (self-contained, brand-aligned).
    Embed: <script src="https://YOUR-BACKEND/widget.js" data-api="https://YOUR-BACKEND"></script> */
 (function () {
   var S = document.currentScript;
-  var API = (S && S.getAttribute("data-api")) || (window.ORGANICA_API || "");
-  API = API.replace(/\/$/, "");
-
+  var API = ((S && S.getAttribute("data-api")) || window.ORGANICA_API || "").replace(/\/$/, "");
   var GREEN = "#9DC435", DEEP = "#447838", OFF = "#F0EBE1";
+
   var sid = localStorage.getItem("ob_sid");
   if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("ob_sid", sid); }
-  var history = [], vertical = null, open = false;
+
+  var history = [], vertical = null, open = false, flow = null;
+  var state = "idle", sel = { crop: null, problem: null };
 
   var css = `
   #ob-launch{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;
    background:${GREEN};box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;z-index:2147483000;
    display:flex;align-items:center;justify-content:center;transition:transform .15s}
-  #ob-launch:hover{transform:scale(1.06)}
-  #ob-launch svg{width:30px;height:30px;fill:#fff}
+  #ob-launch:hover{transform:scale(1.06)} #ob-launch svg{width:30px;height:30px;fill:#fff}
   #ob-panel{position:fixed;right:22px;bottom:94px;width:380px;max-width:calc(100vw - 32px);
    height:560px;max-height:calc(100vh - 120px);background:#fff;border-radius:16px;display:none;
    flex-direction:column;overflow:hidden;z-index:2147483000;box-shadow:0 12px 40px rgba(0,0,0,.28);
@@ -28,7 +28,7 @@
   .ob-b{max-width:80%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap}
   .ob-m.a .ob-b{background:#fff;color:#1f2a14;border-bottom-left-radius:4px}
   .ob-m.u .ob-b{background:${DEEP};color:#fff;border-bottom-right-radius:4px}
-  #ob-chips{padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap;background:${OFF}}
+  #ob-chips{padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap;background:${OFF};max-height:160px;overflow-y:auto}
   .ob-chip{border:1px solid ${DEEP};color:${DEEP};background:#fff;border-radius:18px;
    padding:7px 13px;font-size:13px;cursor:pointer}
   .ob-chip:hover{background:${DEEP};color:#fff}
@@ -45,33 +45,93 @@
   var P = document.createElement("div"); P.id = "ob-panel";
   P.innerHTML =
     '<div id="ob-head"><b>Ask Ora</b><span>Organica Biotech - Agriculture & Environment</span></div>' +
-    '<div id="ob-msgs"></div>' +
-    '<div id="ob-chips"><div class="ob-chip" data-v="Agriculture">🌱 Agriculture</div>' +
-    '<div class="ob-chip" data-v="Environment">🌍 Environment</div></div>' +
+    '<div id="ob-msgs"></div><div id="ob-chips"></div>' +
     '<div id="ob-foot"><input id="ob-in" placeholder="Type your question..." autocomplete="off"/>' +
     '<button id="ob-send">Send</button></div>' +
     '<div id="ob-tag">Powered by Organica Biotech</div>';
   document.body.appendChild(P);
 
-  var msgs = P.querySelector("#ob-msgs"), inp = P.querySelector("#ob-in");
+  var msgs = P.querySelector("#ob-msgs"), inp = P.querySelector("#ob-in"), chipBox = P.querySelector("#ob-chips");
 
   function add(role, text) {
     var d = document.createElement("div"); d.className = "ob-m " + (role === "user" ? "u" : "a");
     var b = document.createElement("div"); b.className = "ob-b"; b.textContent = text;
     d.appendChild(b); msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return b;
   }
-  function toggle(v) { open = v == null ? !open : v; P.classList.toggle("ob-on", open);
-    if (open && !msgs.children.length) add("a", "Hi! I'm Ora from Organica Biotech. How can I help — are you looking for Agriculture or Environment solutions?"); }
-  L.onclick = function () { toggle(); };
+  function chips(items) {
+    chipBox.innerHTML = "";
+    items.forEach(function (it) {
+      var c = document.createElement("div"); c.className = "ob-chip"; c.textContent = it.label;
+      c.onclick = it.onClick; chipBox.appendChild(c);
+    });
+  }
+  function clearChips() { chipBox.innerHTML = ""; }
 
-  P.querySelectorAll(".ob-chip").forEach(function (c) {
-    c.onclick = function () { vertical = c.getAttribute("data-v");
-      send("I'm interested in " + vertical + " solutions."); };
-  });
+  function verticalChips() {
+    chips([
+      { label: "🌱 Agriculture", onClick: function () { pickVertical("Agriculture"); } },
+      { label: "🌍 Environment", onClick: function () { pickVertical("Environment"); } }
+    ]);
+  }
 
-  function send(text) {
-    text = (text || inp.value).trim(); if (!text) return;
-    inp.value = ""; add("user", text); history.push({ role: "user", content: text });
+  function start() {
+    if (msgs.children.length) return;
+    add("a", "Hi! I'm Ora from Organica Biotech. Are you looking for Agriculture or Environment solutions?");
+    verticalChips();
+  }
+
+  function pickVertical(v) {
+    vertical = v; add("user", v);
+    var f = flow && flow[v];
+    if (v === "Agriculture" && f && f.crops) {
+      state = "await_crop";
+      add("a", f.ask_crop);
+      var items = f.crops.map(function (c) {
+        return { label: c.label, onClick: function () { pickCrop(c); } };
+      });
+      items.push({ label: f.other_crop_label, onClick: function () { otherCrop(); } });
+      chips(items);
+    } else {
+      state = "chat"; clearChips();
+      sendToBot("I'm interested in " + v + " solutions.");
+    }
+  }
+
+  function pickCrop(c) {
+    sel.crop = c.key; add("user", c.label.replace(/^[^\w]+/, "").trim() || c.key);
+    var f = flow[vertical];
+    state = "await_problem";
+    add("a", f.ask_problem.replace("{crop}", sel.crop));
+    var items = (c.problems || []).map(function (p) {
+      return { label: p, onClick: function () { pickProblem(p); } };
+    });
+    items.push({ label: f.other_problem_label, onClick: function () { otherProblem(); } });
+    chips(items);
+  }
+
+  function otherCrop() {
+    var f = flow[vertical]; state = "await_custom_crop"; clearChips();
+    add("a", f.other_crop_prompt); inp.focus();
+  }
+  function otherProblem() {
+    var f = flow[vertical]; state = "await_custom_problem"; clearChips();
+    add("a", f.other_problem_prompt); inp.focus();
+  }
+
+  function pickProblem(p) {
+    sel.problem = p; add("user", p); recommend();
+  }
+
+  function recommend() {
+    state = "chat"; clearChips();
+    var q = "I grow " + sel.crop + ". The problem I'm facing is: " + sel.problem +
+            ". Please recommend the right Organica product with key benefits and dosage.";
+    sendToBot(q, true);
+  }
+
+  function sendToBot(text, silent) {
+    if (!silent) add("user", text);
+    history.push({ role: "user", content: text });
     var tb = add("a", "…");
     fetch(API + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -83,6 +143,24 @@
       msgs.scrollTop = msgs.scrollHeight;
     }).catch(function () { tb.textContent = "Connection error. Please try again."; });
   }
-  P.querySelector("#ob-send").onclick = function () { send(); };
-  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+
+  function onUserText() {
+    var t = inp.value.trim(); if (!t) return; inp.value = "";
+    if (state === "await_custom_crop") {
+      sel.crop = t; add("user", t); state = "await_problem_text";
+      add("a", (flow[vertical].ask_problem).replace("{crop}", t));
+      return;
+    }
+    if (state === "await_custom_problem" || state === "await_problem_text") {
+      sel.problem = t; add("user", t); recommend(); return;
+    }
+    add("user", t); sendToBot(t, true);
+  }
+
+  L.onclick = function () { open = !open; P.classList.toggle("ob-on", open); if (open) start(); };
+  P.querySelector("#ob-send").onclick = onUserText;
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") onUserText(); });
+
+  fetch(API + "/api/flow").then(function (r) { return r.json(); })
+    .then(function (f) { flow = f; }).catch(function () { flow = {}; });
 })();

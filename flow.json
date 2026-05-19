@@ -1,0 +1,22 @@
+{
+  "Agriculture": {
+    "ask_crop": "Great — let's find the right solution. Which crop are you growing?",
+    "ask_problem": "What challenge are you facing with {crop}?",
+    "other_crop_key": "__other_crop__",
+    "other_crop_label": "➕ Other crop",
+    "other_crop_prompt": "Sure — please type the name of your crop.",
+    "other_problem_label": "➕ Other / not listed",
+    "other_problem_prompt": "No problem — please describe the issue you're facing in a few words.",
+    "crops": [
+      { "key": "Paddy / Rice", "label": "🌾 Paddy / Rice",
+        "problems": ["Low yield", "Poor soil health", "Climatic / drought stress", "Root rot / fungal disease"] },
+      { "key": "Cotton", "label": "🌿 Cotton",
+        "problems": ["Low yield", "Poor soil health", "Drought / climatic stress", "Pest & disease attack", "Weak plant immunity"] },
+      { "key": "Cocoa", "label": "🍫 Cocoa",
+        "problems": ["Black Pod disease", "Cocoa Pod Borer", "Poor soil health", "Low yield", "Fungal disease"] },
+      { "key": "Banana", "label": "🍌 Banana",
+        "problems": ["Soil fatigue", "Fungal infection / root rot", "Low yield", "Climatic / salinity stress"] }
+    ]
+  },
+  "Environment": null
+}

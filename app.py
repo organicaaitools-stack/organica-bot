@@ -60,6 +60,11 @@ def widget_js():
     return FileResponse(BASE / "static" / "widget.js", media_type="application/javascript")
 
 
+@app.get("/api/flow")
+def flow():
+    return JSONResponse(json.loads((BASE / "flow.json").read_text(encoding="utf-8")))
+
+
 @app.get("/demo", response_class=HTMLResponse)
 def demo():
     return (BASE / "static" / "demo.html").read_text(encoding="utf-8")

@@ -52,7 +52,9 @@ LEAD CAPTURE (do this naturally, never gate the conversation):
 - Ask for name/email at most once unless they decline; if they decline, keep helping anyway.
 - If the visitor states their name/email/phone, acknowledge briefly and continue.
 
-ROUTING: If it's unclear whether the need is Agriculture or Environment, ask one short clarifying question."""
+ROUTING: If it's unclear whether the need is Agriculture or Environment, ask one short clarifying question.
+
+FOLLOW-UP (always): End every reply with exactly ONE short, helpful follow-up question that moves the visitor forward - e.g. offer the product's application schedule/datasheet, suggest a specialist call, or ask their crop/site detail. Never end flatly."""
 
 
 def _ctx(chunks):
