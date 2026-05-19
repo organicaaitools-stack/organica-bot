@@ -53,9 +53,30 @@
 
   var msgs = P.querySelector("#ob-msgs"), inp = P.querySelector("#ob-in"), chipBox = P.querySelector("#ob-chips");
 
+  function bold(parent, s) {
+    s.split(/\*\*/).forEach(function (seg, i) {
+      if (i % 2 === 1) { var b = document.createElement("strong"); b.textContent = seg; parent.appendChild(b); }
+      else parent.appendChild(document.createTextNode(seg));
+    });
+  }
+  function renderRich(el, text) {
+    el.textContent = ""; var ul = null;
+    String(text).split(/\r?\n/).forEach(function (ln) {
+      var t = ln.trim();
+      if (/^[-*•]\s+/.test(t)) {
+        if (!ul) { ul = document.createElement("ul"); ul.style.margin = "5px 0"; ul.style.paddingLeft = "18px"; el.appendChild(ul); }
+        var li = document.createElement("li"); li.style.margin = "2px 0"; bold(li, t.replace(/^[-*•]\s+/, "")); ul.appendChild(li);
+      } else {
+        ul = null;
+        if (!t) return;
+        var p = document.createElement("div"); p.style.margin = "3px 0"; bold(p, t); el.appendChild(p);
+      }
+    });
+  }
   function add(role, text) {
     var d = document.createElement("div"); d.className = "ob-m " + (role === "user" ? "u" : "a");
-    var b = document.createElement("div"); b.className = "ob-b"; b.textContent = text;
+    var b = document.createElement("div"); b.className = "ob-b";
+    if (role === "user") b.textContent = text; else renderRich(b, text);
     d.appendChild(b); msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return b;
   }
   function chips(items) {
@@ -138,7 +159,7 @@
       body: JSON.stringify({ session_id: sid, message: text, history: history.slice(0, -1),
         page_url: location.href, vertical: vertical })
     }).then(function (r) { return r.json(); }).then(function (d) {
-      tb.textContent = d.reply || "Sorry, something went wrong.";
+      renderRich(tb, d.reply || "Sorry, something went wrong.");
       history.push({ role: "assistant", content: d.reply || "" });
       msgs.scrollTop = msgs.scrollHeight;
     }).catch(function () { tb.textContent = "Connection error. Please try again."; });
